@@ -4,7 +4,6 @@ import os
 import pandas as pd
 import scipy.sparse
 import time
-import sys
 import argparse
 
 def parse_args():
@@ -42,12 +41,6 @@ def get_count(tp, id):
     playcount_groupbyid = tp[[id]].groupby(id, as_index=False)
     count = playcount_groupbyid.size()
     return count
-
-
-def _writeline_and_time(s):
-    sys.stdout.write(s)
-    sys.stdout.flush()
-    return time.time()
 
 
 class ENMF:
@@ -157,12 +150,12 @@ def dev_cold(u_train, i_train, test_set, train_m, test_m):
         else:
             user_te[4].append(i)
     for l in range(len(user_te)):
-        print l
+        print(l)
         u = np.array(user_te[l])
         user_te2 = u[:, np.newaxis]
         ll = int(len(u) / 128) + 1
 
-        print u
+        print(u)
 
         for batch_num in range(ll):
             start_index = batch_num * 128
@@ -223,7 +216,7 @@ def dev_cold(u_train, i_train, test_set, train_m, test_m):
         ndcg100[l] = np.hstack(ndcg100[l])
 
     for l in range(len(recall100)):
-        print np.mean(recall100[l]), np.mean(ndcg100[l])
+        print(np.mean(recall100[l]), np.mean(ndcg100[l]))
 
 
 def dev_step(test_set, train_m, test_m,args):
@@ -231,7 +224,7 @@ def dev_step(test_set, train_m, test_m,args):
     Evaluates model on a dev set
 
     """
-    user_te = np.array(test_set.keys())
+    user_te = np.asarray(list(test_set.keys()))
     user_te2 = user_te[:, np.newaxis]
 
     ll = int(len(user_te) / 128) + 1
@@ -324,9 +317,9 @@ def dev_step(test_set, train_m, test_m,args):
     ndcg100 = np.hstack(ndcg100)
     ndcg200 = np.hstack(ndcg200)
 
-    print np.mean(recall50), np.mean(ndcg50)
-    print np.mean(recall100), np.mean(ndcg100)
-    print np.mean(recall200), np.mean(ndcg200)
+    print("recall@50, ndcg@50:", np.mean(recall50), np.mean(ndcg50))
+    print("recall@100, ndcg@100:", np.mean(recall100), np.mean(ndcg100))
+    print("recall@200, ndcg@200:", np.mean(recall200), np.mean(ndcg200))
     f1.write(str(np.mean(recall100)) + ' ' + str(np.mean(ndcg100)) + '\n')
     f1.flush()
 
@@ -350,23 +343,21 @@ if __name__ == '__main__':
     random_seed = 2019
     args = parse_args()
 
-    if args.dataset == 'ml-1m':
-        print('load ml-1m data')
-        DATA_ROOT = '../data/ml-1m'
-        f1 = open(os.path.join(DATA_ROOT, 'ENMF_user.txt'), 'w')
+    assert args.dataset == 'ml-1m'
+    print('load ml-1m data')
+    DATA_ROOT = '../data/ml-1m'
+    f1 = open(os.path.join(DATA_ROOT, 'ENMF_user.txt'), 'w')
 
     tp_test = load_data(os.path.join(DATA_ROOT, 'ml.test.txt'))
     tp_train = load_data(os.path.join(DATA_ROOT, 'ml.train.txt'))
 
     tp_all = tp_train.append(tp_test)
 
-    tp_dul = pd.merge(tp_train, tp_test)
-
     usercount, itemcount = get_count(tp_all, 'uid'), get_count(tp_all, 'sid')
 
     n_users, n_items = usercount.shape[0], itemcount.shape[0]
 
-    print n_users, n_items
+    print("user account: %s, item account: %s" % (n_users, n_items))
 
     batch_size = args.batch_size
     lr=args.lr
@@ -385,7 +376,7 @@ if __name__ == '__main__':
 
     test_set = {}
     for i in range(len(u_test)):
-        if  u_test[i] in test_set:
+        if u_test[i] in test_set:
             test_set[u_test[i]].append(i_test[i])
         else:
             test_set[u_test[i]] = [i_test[i]]
@@ -400,7 +391,8 @@ if __name__ == '__main__':
     for i in train_set:
         if len(train_set[i]) > max_item_pu:
             max_item_pu = len(train_set[i])
-    print max_item_pu
+
+    print("max item number per user:", max_item_pu)
     for i in train_set:
         while len(train_set[i]) < max_item_pu:
             train_set[i].append(n_items)
@@ -422,8 +414,8 @@ if __name__ == '__main__':
             user_train1, item_train1 = get_train_instances1(train_set)
 
             for epoch in range(epochs):
-                print epoch
-                start_t = _writeline_and_time('\tUpdating...')
+                print("epoch: ", epoch)
+                start_t = time.time()
 
                 shuffle_indices = np.random.permutation(np.arange(len(user_train1)))
                 user_train1 = user_train1[shuffle_indices]
@@ -443,9 +435,8 @@ if __name__ == '__main__':
                     loss[0] += loss1
                     loss[1] += loss2
                     loss[2] += loss3
-                print('\r\tUpdating: time=%.2f'
-                      % (time.time() - start_t))
-                print 'loss,loss_no_reg,loss_reg ', loss[0] / ll, loss[1] / ll, loss[2] / ll
+                print('Updating: time=%.2f' % (time.time() - start_t))
+                print('loss, loss_no_reg, loss_reg ', loss[0] / ll, loss[1] / ll, loss[2] / ll)
 
                 if epoch < epochs:
                     if epoch % args.verbose == 0:
@@ -453,27 +444,3 @@ if __name__ == '__main__':
 
                 if epoch >= epochs:
                     dev_step(test_set, train_m, test_m,args)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
